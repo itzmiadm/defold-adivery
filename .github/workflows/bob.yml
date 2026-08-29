@@ -17,9 +17,9 @@ jobs:
           - arm64-android
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
@@ -35,7 +35,7 @@ jobs:
 
       - name: Cache bob.jar
         id: bob-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: bob.jar
           key: bob-stable-${{ steps.defold.outputs.version }}
@@ -48,10 +48,16 @@ jobs:
             "https://d.defold.com/archive/${{ steps.defold.outputs.version }}/bob/bob.jar"
 
       - name: Resolve project dependencies
-        run: java -jar bob.jar resolve
+        id: resolve
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar bob.jar resolve 2>&1 | tee resolve.log
 
       - name: Build
         id: build
+        if: steps.resolve.outcome == 'success'
         continue-on-error: true
         run: >-
           java -jar bob.jar
@@ -61,10 +67,14 @@ jobs:
           build --archive
 
       - name: Report bob failure
-        if: steps.build.outcome == 'failure'
+        if: steps.resolve.outcome == 'failure' || steps.build.outcome == 'failure'
         shell: bash
         run: |
-          log_file=$(find build -type f -name log.txt -print -quit)
+          if [[ "${{ steps.resolve.outcome }}" == "failure" ]]; then
+            log_file=resolve.log
+          else
+            log_file=$(find build -type f -name log.txt -print -quit)
+          fi
           if [[ -n "$log_file" ]]; then
             tail -c 50000 "$log_file"
             message=$(tail -c 50000 "$log_file" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
