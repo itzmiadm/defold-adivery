@@ -59,12 +59,14 @@ jobs:
         id: build
         if: steps.resolve.outcome == 'success'
         continue-on-error: true
-        run: >-
-          java -jar bob.jar
-          --platform=${{ matrix.platform }}
-          --architectures=${{ matrix.platform }}
-          --build-server=https://build-stage.defold.com
-          build --archive
+        shell: bash
+        run: |
+          set -o pipefail
+          java -jar bob.jar \
+            --platform=${{ matrix.platform }} \
+            --architectures=${{ matrix.platform }} \
+            --build-server=https://build-stage.defold.com \
+            build --archive 2>&1 | tee build-command.log
 
       - name: Report bob failure
         if: steps.resolve.outcome == 'failure' || steps.build.outcome == 'failure'
@@ -74,6 +76,9 @@ jobs:
             log_file=resolve.log
           else
             log_file=$(find build -type f -name log.txt -print -quit)
+            if [[ -z "$log_file" ]]; then
+              log_file=build-command.log
+            fi
           fi
           if [[ -n "$log_file" ]]; then
             tail -c 50000 "$log_file"
