@@ -1,4 +1,4 @@
-name: Build with bob
+name: Build Android with bob
 
 on:
   push:
@@ -7,4 +7,69 @@ on:
 
 jobs:
   build:
-    uses: defold/github-actions-common/.github/workflows/bob.yml@master
+    name: Build (${{ matrix.platform }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - armv7-android
+          - arm64-android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Resolve stable Defold version
+        id: defold
+        shell: bash
+        run: |
+          version=$(curl -fsSL https://d.defold.com/stable/info.json | jq -r .sha1)
+          test -n "$version"
+          test "$version" != "null"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache bob.jar
+        id: bob-cache
+        uses: actions/cache@v4
+        with:
+          path: bob.jar
+          key: bob-stable-${{ steps.defold.outputs.version }}
+
+      - name: Download bob.jar
+        if: steps.bob-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          curl -fsSL -o bob.jar \
+            "https://d.defold.com/archive/${{ steps.defold.outputs.version }}/bob/bob.jar"
+
+      - name: Resolve project dependencies
+        run: java -jar bob.jar resolve
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: >-
+          java -jar bob.jar
+          --platform=${{ matrix.platform }}
+          --architectures=${{ matrix.platform }}
+          --build-server=https://build-stage.defold.com
+          build --archive
+
+      - name: Report bob failure
+        if: steps.build.outcome == 'failure'
+        shell: bash
+        run: |
+          log_file=$(find build -type f -name log.txt -print -quit)
+          if [[ -n "$log_file" ]]; then
+            tail -c 50000 "$log_file"
+            message=$(tail -c 50000 "$log_file" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=Defold bob build failed::$message"
+          else
+            echo "::error title=Defold bob build failed::bob exited with code 1 and did not create build/log.txt"
+          fi
+          exit 1
