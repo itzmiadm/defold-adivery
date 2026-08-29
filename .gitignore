@@ -1,0 +1,6 @@
+.DS_Store
+.internal/
+.editor_settings
+build/
+bundle/
+upload/

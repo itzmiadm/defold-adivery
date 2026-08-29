@@ -1,0 +1,177 @@
+- name: adivery
+  type: table
+  desc: Android native extension for the Adivery advertising SDK.
+  members:
+
+  - name: initialize
+    type: function
+    desc: Configures Adivery. Call once before requesting ads. If app_id is omitted, adivery.app_id from game.project is used.
+    parameters:
+    - name: app_id
+      type: string
+      optional: true
+      desc: Adivery application id.
+    returns:
+    - name: accepted
+      type: boolean
+      desc: True when configuration was accepted.
+
+  - name: set_callback
+    type: function
+    desc: Sets the single SDK callback. Pass nil to remove it.
+    parameters:
+    - name: callback
+      type: function
+      desc: Function receiving self and an event table.
+
+  - name: set_user_id
+    type: function
+    desc: Associates a publisher user id with Adivery requests.
+    parameters:
+    - name: user_id
+      type: string
+
+  - name: prepare_interstitial
+    type: function
+    desc: Starts loading an interstitial placement.
+    parameters:
+    - name: placement_id
+      type: string
+
+  - name: prepare_rewarded
+    type: function
+    desc: Starts loading a rewarded placement.
+    parameters:
+    - name: placement_id
+      type: string
+
+  - name: prepare_app_open
+    type: function
+    desc: Starts loading an App Open placement.
+    parameters:
+    - name: placement_id
+      type: string
+
+  - name: show
+    type: function
+    desc: Schedules a loaded rewarded or interstitial placement for display.
+    parameters:
+    - name: placement_id
+      type: string
+    returns:
+    - name: scheduled
+      type: boolean
+
+  - name: show_app_open
+    type: function
+    desc: Schedules a loaded App Open placement for display.
+    parameters:
+    - name: placement_id
+      type: string
+    returns:
+    - name: scheduled
+      type: boolean
+
+  - name: is_loaded
+    type: function
+    desc: Checks whether a placement is ready.
+    parameters:
+    - name: placement_id
+      type: string
+    returns:
+    - name: loaded
+      type: boolean
+
+  - name: prepare_banner
+    type: function
+    desc: Creates and loads a hidden banner. Replaces a banner with the same placement id.
+    parameters:
+    - name: placement_id
+      type: string
+    - name: size
+      type: number
+      optional: true
+      desc: A BANNER_SIZE_* constant. Defaults to BANNER_SIZE_BANNER.
+    - name: retry_on_error
+      type: boolean
+      optional: true
+      desc: Defaults to true.
+
+  - name: show_banner
+    type: function
+    desc: Shows a prepared banner at a gravity position with optional pixel offsets.
+    parameters:
+    - name: placement_id
+      type: string
+    - name: position
+      type: number
+      optional: true
+      desc: A POSITION_* constant. Defaults to POSITION_BOTTOM_CENTER.
+    - name: offset_x
+      type: number
+      optional: true
+    - name: offset_y
+      type: number
+      optional: true
+
+  - name: hide_banner
+    type: function
+    desc: Hides a prepared banner without destroying it.
+    parameters:
+    - name: placement_id
+      type: string
+
+  - name: destroy_banner
+    type: function
+    desc: Removes a banner view and releases the extension reference.
+    parameters:
+    - name: placement_id
+      type: string
+
+  - name: request_native
+    type: function
+    desc: Requests native ad assets. EVENT_LOADED includes native_id and creative fields.
+    parameters:
+    - name: placement_id
+      type: string
+
+  - name: record_native_impression
+    type: function
+    desc: Records an impression for a loaded native ad.
+    parameters:
+    - name: native_id
+      type: string
+    returns:
+    - name: recorded
+      type: boolean
+
+  - name: record_native_click
+    type: function
+    desc: Records a click for a loaded native ad.
+    parameters:
+    - name: native_id
+      type: string
+    returns:
+    - name: recorded
+      type: boolean
+
+  - name: destroy_native
+    type: function
+    desc: Releases a native ad reference after it is no longer displayed.
+    parameters:
+    - name: native_id
+      type: string
+
+  - name: set_auto_app_open
+    type: function
+    desc: Enables or disables showing a loaded App Open ad after returning from background.
+    parameters:
+    - name: placement_id
+      type: string
+    - name: enabled
+      type: boolean
+      optional: true
+    - name: minimum_background_seconds
+      type: number
+      optional: true
+      desc: Defaults to 5 seconds.

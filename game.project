@@ -1,0 +1,23 @@
+[project]
+title = Adivery Defold Example
+version = 1.0
+
+[bootstrap]
+main_collection = /main/main.collectionc
+
+[display]
+width = 720
+height = 1280
+dynamic_orientation = 1
+
+[android]
+package = com.itzmiadm.adiveryexample
+minimum_sdk_version = 23
+target_sdk_version = 35
+
+[library]
+include_dirs = adivery
+defold_min_version = 1.9.6
+
+[adivery]
+app_id =

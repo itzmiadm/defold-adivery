@@ -1,0 +1,10 @@
+name: Build with bob
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: defold/github-actions-common/.github/workflows/bob.yml@master

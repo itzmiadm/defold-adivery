@@ -1,0 +1,30 @@
+local function adivery_callback(self, event)
+    pprint(event)
+
+    if event.type == adivery.TYPE_REWARDED
+        and event.event == adivery.EVENT_CLOSED
+        and event.rewarded then
+        print("Reward the player here")
+    end
+end
+
+function init(self)
+    if not adivery then
+        print("Adivery is available only in Android bundles")
+        return
+    end
+
+    adivery.set_callback(adivery_callback)
+
+    -- Set [adivery].app_id in game.project, then initialize the SDK.
+    -- adivery.initialize()
+
+    -- Load an ad after initialization:
+    -- adivery.prepare_rewarded("YOUR_REWARDED_PLACEMENT_ID")
+end
+
+function final(self)
+    if adivery then
+        adivery.set_callback(nil)
+    end
+end
