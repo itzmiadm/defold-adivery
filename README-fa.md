@@ -137,6 +137,11 @@ adivery.destroy_banner(id)
 `BANNER_SIZE_LARGE` با 320x100 dp و `BANNER_SIZE_MEDIUM_RECTANGLE` با 300x250
 dp هستند. offsetها برحسب پیکسل Android و نسبت به موقعیت انتخاب‌شده‌اند.
 
+افزونه هنگام نمایش، اندازهٔ درخواستی بنر را دوباره روی View اندروید اعمال
+می‌کند؛ چون بعضی نسخه‌های SDK پارامترهای layout را حین بارگذاری عوض می‌کنند.
+اگر یک placement چند بار آماده شود، callbackهای View قبلی و Destroy‌شده نیز
+نادیده گرفته می‌شوند.
+
 ## تبلیغ Native
 
 ```lua
