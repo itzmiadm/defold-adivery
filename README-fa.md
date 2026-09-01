@@ -137,9 +137,9 @@ adivery.destroy_banner(id)
 `BANNER_SIZE_LARGE` با 320x100 dp و `BANNER_SIZE_MEDIUM_RECTANGLE` با 300x250
 dp هستند. offsetها برحسب پیکسل Android و نسبت به موقعیت انتخاب‌شده‌اند.
 
-View بنر SDK داخل یک container اندرویدی با اندازهٔ ثابت قرار می‌گیرد تا محتوای
-داخلی آن تمام سطح Defold را نپوشاند. افزونه هنگام نمایش، اندازهٔ درخواستی را
-دوباره روی همین container اعمال می‌کند. اگر یک placement چند بار آماده شود،
+View بنر SDK داخل یک پنجرهٔ اندرویدی محدود و non-focusable قرار می‌گیرد؛ این
+همان الگوی overlay افزونهٔ رسمی AdMob دیفولد است و اجازه نمی‌دهد محتوای داخلی
+بنر سطح Defold را بپوشاند یا resize کند. اگر یک placement چند بار آماده شود،
 callbackهای View قبلی و Destroy‌شده نیز نادیده گرفته می‌شوند.
 
 ## تبلیغ Native

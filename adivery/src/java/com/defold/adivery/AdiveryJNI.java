@@ -14,6 +14,7 @@ import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 import com.adivery.sdk.Adivery;
@@ -426,13 +427,10 @@ public final class AdiveryJNI {
                     });
 
                     FrameLayout container = new FrameLayout(activity);
-                    container.setVisibility(View.GONE);
+                    container.setVisibility(View.VISIBLE);
                     container.addView(banner, new FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT));
-                    FrameLayout.LayoutParams params = bannerLayout(
-                            size, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-                    activity.addContentView(container, params);
                     bannerContainers.put(placementId, container);
                     bannerSizes.put(placementId, size);
                     banners.put(placementId, banner);
@@ -458,14 +456,22 @@ public final class AdiveryJNI {
                     return;
                 }
                 Integer requestedSize = bannerSizes.get(placementId);
-                FrameLayout.LayoutParams params = bannerLayout(
+                WindowManager.LayoutParams params = bannerWindowLayout(
                         requestedSize == null ? 0 : requestedSize,
-                        toGravity(position));
-                container.setLayoutParams(params);
-                container.setTranslationX(offsetX);
-                container.setTranslationY(offsetY);
-                container.setVisibility(View.VISIBLE);
-                emit(TYPE_BANNER, EVENT_SHOWN, placementId);
+                        toGravity(position), offsetX, offsetY);
+                try {
+                    container.setSystemUiVisibility(
+                            activity.getWindow().getDecorView().getSystemUiVisibility());
+                    WindowManager windowManager = activity.getWindowManager();
+                    if (container.isAttachedToWindow()) {
+                        windowManager.updateViewLayout(container, params);
+                    } else {
+                        windowManager.addView(container, params);
+                    }
+                    emit(TYPE_BANNER, EVENT_SHOWN, placementId);
+                } catch (RuntimeException exception) {
+                    emitFailure(TYPE_BANNER, placementId, exception.getMessage());
+                }
             }
         });
     }
@@ -476,7 +482,9 @@ public final class AdiveryJNI {
             public void run() {
                 AdiveryBannerAdView banner = banners.get(placementId);
                 FrameLayout container = bannerContainers.get(placementId);
-                if (banner != null && container != null) container.setVisibility(View.GONE);
+                if (banner != null && container != null && container.isAttachedToWindow()) {
+                    activity.getWindowManager().removeView(container);
+                }
             }
         });
     }
@@ -496,8 +504,9 @@ public final class AdiveryJNI {
         bannerSizes.remove(placementId);
         if (banner == null && container == null) return;
         if (container != null) {
-            ViewGroup parent = (ViewGroup) container.getParent();
-            if (parent != null) parent.removeView(container);
+            if (container.isAttachedToWindow()) {
+                activity.getWindowManager().removeView(container);
+            }
             container.removeAllViews();
         } else if (banner != null) {
             ViewGroup parent = (ViewGroup) banner.getParent();
@@ -550,6 +559,20 @@ public final class AdiveryJNI {
                 break;
         }
         return new FrameLayout.LayoutParams(dp(widthDp), dp(heightDp), gravity);
+    }
+
+    private WindowManager.LayoutParams bannerWindowLayout(
+            int size, int gravity, int offsetX, int offsetY) {
+        FrameLayout.LayoutParams dimensions = bannerLayout(size, gravity);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams();
+        params.width = dimensions.width;
+        params.height = dimensions.height;
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        params.gravity = gravity;
+        params.x = offsetX;
+        params.y = offsetY;
+        return params;
     }
 
     private int dp(int value) {
