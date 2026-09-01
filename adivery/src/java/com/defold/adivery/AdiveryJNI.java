@@ -62,6 +62,8 @@ public final class AdiveryJNI {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Map<String, AdiveryBannerAdView> banners =
             new ConcurrentHashMap<String, AdiveryBannerAdView>();
+    private final Map<String, FrameLayout> bannerContainers =
+            new ConcurrentHashMap<String, FrameLayout>();
     private final Map<String, Integer> bannerSizes =
             new ConcurrentHashMap<String, Integer>();
     private final Map<String, NativeAd> nativeAds =
@@ -392,7 +394,7 @@ public final class AdiveryJNI {
                     banner.setPlacementId(placementId);
                     banner.setRetryOnError(retryOnError);
                     banner.setBannerSize(toBannerSize(size));
-                    banner.setVisibility(View.GONE);
+                    banner.setVisibility(View.VISIBLE);
                     banner.setBannerAdListener(new AdiveryAdListener() {
                         @Override
                         public void onAdLoaded() {
@@ -423,12 +425,20 @@ public final class AdiveryJNI {
                         }
                     });
 
-                    FrameLayout.LayoutParams params = bannerLayout(size, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-                    activity.addContentView(banner, params);
+                    FrameLayout container = new FrameLayout(activity);
+                    container.setVisibility(View.GONE);
+                    container.addView(banner, new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
+                    FrameLayout.LayoutParams params = bannerLayout(
+                            size, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+                    activity.addContentView(container, params);
+                    bannerContainers.put(placementId, container);
                     bannerSizes.put(placementId, size);
                     banners.put(placementId, banner);
                     banner.loadAd();
                 } catch (RuntimeException exception) {
+                    destroyBannerOnUiThread(placementId, false);
                     emitFailure(TYPE_BANNER, placementId, exception.getMessage());
                 }
             }
@@ -441,7 +451,8 @@ public final class AdiveryJNI {
             @Override
             public void run() {
                 AdiveryBannerAdView banner = banners.get(placementId);
-                if (banner == null) {
+                FrameLayout container = bannerContainers.get(placementId);
+                if (banner == null || container == null) {
                     emitFailure(TYPE_BANNER, placementId,
                             "Banner does not exist. Call prepare_banner() first.");
                     return;
@@ -450,10 +461,11 @@ public final class AdiveryJNI {
                 FrameLayout.LayoutParams params = bannerLayout(
                         requestedSize == null ? 0 : requestedSize,
                         toGravity(position));
-                banner.setLayoutParams(params);
-                banner.setTranslationX(offsetX);
-                banner.setTranslationY(offsetY);
-                banner.setVisibility(View.VISIBLE);
+                container.setLayoutParams(params);
+                container.setTranslationX(offsetX);
+                container.setTranslationY(offsetY);
+                container.setVisibility(View.VISIBLE);
+                emit(TYPE_BANNER, EVENT_SHOWN, placementId);
             }
         });
     }
@@ -463,7 +475,8 @@ public final class AdiveryJNI {
             @Override
             public void run() {
                 AdiveryBannerAdView banner = banners.get(placementId);
-                if (banner != null) banner.setVisibility(View.GONE);
+                FrameLayout container = bannerContainers.get(placementId);
+                if (banner != null && container != null) container.setVisibility(View.GONE);
             }
         });
     }
@@ -479,10 +492,17 @@ public final class AdiveryJNI {
 
     private void destroyBannerOnUiThread(String placementId, boolean notify) {
         AdiveryBannerAdView banner = banners.remove(placementId);
+        FrameLayout container = bannerContainers.remove(placementId);
         bannerSizes.remove(placementId);
-        if (banner == null) return;
-        ViewGroup parent = (ViewGroup) banner.getParent();
-        if (parent != null) parent.removeView(banner);
+        if (banner == null && container == null) return;
+        if (container != null) {
+            ViewGroup parent = (ViewGroup) container.getParent();
+            if (parent != null) parent.removeView(container);
+            container.removeAllViews();
+        } else if (banner != null) {
+            ViewGroup parent = (ViewGroup) banner.getParent();
+            if (parent != null) parent.removeView(banner);
+        }
         if (notify) emit(TYPE_BANNER, EVENT_DESTROYED, placementId);
     }
 

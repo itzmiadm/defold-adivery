@@ -138,10 +138,10 @@ Sizes: `BANNER_SIZE_BANNER` (320x50 dp), `BANNER_SIZE_SMART`,
 dp). Positions cover top/bottom left/center/right and center. Offsets are Android
 pixels relative to the selected gravity position.
 
-The extension reapplies the requested banner dimensions when showing the view,
-because some SDK versions replace the Android layout parameters while loading.
-Repeated preparation of the same placement also ignores callbacks from the old,
-destroyed banner view.
+The SDK banner view is hosted inside a fixed-size Android container, preventing
+its internal creative view from covering the Defold surface. The requested
+dimensions are reapplied when showing that container. Repeated preparation of
+the same placement also ignores callbacks from the old, destroyed banner view.
 
 ## Native ads
 
