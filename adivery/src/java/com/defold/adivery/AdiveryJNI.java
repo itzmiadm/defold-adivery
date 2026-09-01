@@ -25,14 +25,20 @@ import com.adivery.sdk.BannerSize;
 import com.adivery.sdk.NativeAd;
 import com.adivery.sdk.networks.adivery.AdiveryNativeAd;
 
+import okhttp3.internal.publicsuffix.PublicSuffixDatabase;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.GZIPInputStream;
 
 public final class AdiveryJNI {
     private static final String TYPE_SDK = "sdk";
@@ -124,6 +130,9 @@ public final class AdiveryJNI {
         }
 
         try {
+            if (!installOkHttpPublicSuffixDatabase()) {
+                return false;
+            }
             Application application = activity.getApplication();
             Adivery.configure(application, candidate);
             installGlobalListener();
@@ -135,6 +144,39 @@ public final class AdiveryJNI {
             emitFailure(TYPE_SDK, null, exception.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Defold's Android extender dexes Maven JARs but does not currently copy
+     * arbitrary classpath resources from them into the APK. OkHttp requires
+     * publicsuffixes.gz before its DNS-over-HTTPS client can make a request.
+     * The extension bundles the unmodified OkHttp 4.12.0 resource as an Android
+     * asset, so prime OkHttp's singleton explicitly before configuring Adivery.
+     */
+    private boolean installOkHttpPublicSuffixDatabase() {
+        final String assetPath = "okhttp3/internal/publicsuffix/publicsuffixes.gz";
+        try (InputStream asset = activity.getAssets().open(assetPath);
+             GZIPInputStream gzip = new GZIPInputStream(asset);
+             DataInputStream input = new DataInputStream(gzip)) {
+            byte[] rules = readLengthPrefixedBytes(input);
+            byte[] exceptions = readLengthPrefixedBytes(input);
+            PublicSuffixDatabase.Companion.get().setListBytes(rules, exceptions);
+            return true;
+        } catch (IOException | RuntimeException exception) {
+            emitFailure(TYPE_SDK, null,
+                    "Unable to initialize OkHttp public suffix database: " + exception);
+            return false;
+        }
+    }
+
+    private static byte[] readLengthPrefixedBytes(DataInputStream input) throws IOException {
+        int length = input.readInt();
+        if (length < 0 || length > 1024 * 1024) {
+            throw new IOException("Invalid public suffix data length: " + length);
+        }
+        byte[] result = new byte[length];
+        input.readFully(result);
+        return result;
     }
 
     private synchronized void installGlobalListener() {

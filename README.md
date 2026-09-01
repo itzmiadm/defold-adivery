@@ -23,6 +23,10 @@ The extension currently pins `com.adivery:sdk:4.9.0`, the latest release shown
 by Maven Central metadata (last updated 29 June 2026). Minimum Android API is
 23. This project is not an official Adivery product.
 
+The required OkHttp public-suffix database is bundled and initialized by the
+extension. This avoids `Unable to load publicsuffixes.gz` failures caused by
+Defold's Android extender omitting arbitrary Maven JAR resources from the APK.
+
 ## Installation
 
 Add the repository archive to your Defold project's dependencies:
